@@ -1,0 +1,40 @@
+apply plugin: 'com.android.application'
+
+def platformVersion = 16   // OUYA = Android 4.1 (API 16), Tegra 3, GLES2 only
+
+android {
+    compileSdkVersion 30
+    ndkVersion '23.2.8568313'   // last NDK supporting android-16 on armeabi-v7a
+
+    defaultConfig {
+        applicationId 'org.armagetronad.ouya'
+        minSdkVersion platformVersion
+        targetSdkVersion 30
+        versionCode 6
+        versionName "0.4.5-ouya"
+
+        externalNativeBuild {
+            cmake {
+                arguments "-DANDROID_PLATFORM=android-${platformVersion}",
+                          "-DANDROID_STL=c++_shared"
+                cppFlags "-std=c++17 -frtti -fexceptions"   // Armagetron uses heavy RTTI + exceptions
+            }
+        }
+        ndk {
+            abiFilters 'armeabi-v7a'
+        }
+    }
+
+    externalNativeBuild {
+        cmake {
+            path 'src/main/cpp/CMakeLists.txt'
+            version '3.22.1'
+        }
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+        }
+    }
+}

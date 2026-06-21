@@ -1,0 +1,53 @@
+# ---- Build artifacts ----
+android/app/build/
+android/build/
+android/.gradle/
+android/app/.cxx/
+android/local.properties
+android/.idea/
+*.iml
+**/*.o
+**/*.obj
+
+# ---- Built outputs (shipped via GitHub Releases instead) ----
+*.apk
+*.aab
+*.ap_
+
+# ---- Signing material (never commit) ----
+*.jks
+*.keystore
+keystore*
+*.pepk
+
+# ---- Heavy build-only dependency tree ----
+# boost_1_82_0 headers + dep source tarballs. See docs/OUYA_PORT.md for how to
+# restore deps-staging/boost_1_82_0 before building (header-only, from boost.org).
+deps-staging/
+
+# ---- Local debugging screenshots / scratch images at repo root ----
+/arma_input.png
+/arma_menu.png
+/arma_screen.png
+/arma_screen2.png
+/arma_screen3.png
+/clean.png
+/final.png
+/fps_crop*.png
+/freshcfg.png
+/fullgrid*.png
+/native.png
+/native_fps.png
+/pad1.png
+/pad2.png
+/perf_*.png
+/push.png
+/s0.png
+/s1.png
+/state2.png
+/state_now.png
+/t.png
+
+# ---- OS / editor cruft ----
+.DS_Store
+Thumbs.db
