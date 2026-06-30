@@ -7,11 +7,11 @@ android {
     ndkVersion '23.2.8568313'   // last NDK supporting android-16 on armeabi-v7a
 
     defaultConfig {
-        applicationId 'org.armagetronad.ouya'
+        applicationId 'com.ryo.armagetronadouya'
         minSdkVersion platformVersion
         targetSdkVersion 30
-        versionCode 6
-        versionName "0.4.5-ouya"
+        versionCode 7
+        versionName "0.4.5-ouya"   // versionCode 7: applicationId rename to com.ryo.armagetronadouya
 
         externalNativeBuild {
             cmake {
@@ -32,9 +32,25 @@ android {
         }
     }
 
+    // OUYA release signing. Credentials live in keystore.properties (gitignored). Falls back
+    // to the debug key when absent so a keyless clone still builds.
+    signingConfigs {
+        release {
+            def kpFile = rootProject.file('keystore.properties')
+            if (kpFile.exists()) {
+                def kp = new Properties()
+                kp.load(new FileInputStream(kpFile))
+                storeFile rootProject.file(kp['storeFile'])
+                storePassword kp['storePassword']
+                keyAlias kp['keyAlias']
+                keyPassword kp['keyPassword']
+            }
+        }
+    }
     buildTypes {
         release {
             minifyEnabled false
+            signingConfig rootProject.file('keystore.properties').exists() ? signingConfigs.release : signingConfigs.debug
         }
     }
 }
