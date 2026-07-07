@@ -10,8 +10,8 @@ android {
         applicationId 'com.ryo.armagetronadouya'
         minSdkVersion platformVersion
         targetSdkVersion 30
-        versionCode 7
-        versionName "0.4.5-ouya"   // versionCode 7: applicationId rename to com.ryo.armagetronadouya
+        versionCode 8
+        versionName "0.4.5-ouya"   // versionCode 8: keep literal res paths so the store can extract ouya_icon.png; drop redundant assets/ouya_icon.png (only res/drawable-xhdpi/ is used)
 
         externalNativeBuild {
             cmake {
