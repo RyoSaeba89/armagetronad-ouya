@@ -900,15 +900,24 @@ bool uMenuItemString::Event(SDL_Event &e){
 #endif
 
 #if defined(__ANDROID__) && SDL_VERSION_ATLEAST(2,0,0)
-        // Console flow: RETURN (= the O button through the menu pad converter)
-        // toggles the on-screen keyboard for this field. See Select() above for
-        // why it must not open on mere focus.
+        // Console flow: RETURN opens the on-screen keyboard for this field
+        // (see Select() above for why it must not open on mere focus). While
+        // the keyboard is SHOWN, pad events are swallowed by su_GetMenuInput,
+        // so a RETURN arriving here can only come from the IME's Enter key —
+        // that validates the field and closes the keyboard. Visibility (not
+        // SDL's text-input flag) is what matters: the user may dismiss the
+        // IME with the back button, which leaves the flag set.
         if ( c.sym == SDLK_RETURN || c.sym == SDLK_KP_ENTER )
         {
-            if ( !SDL_IsTextInputActive() )
-                SDL_StartTextInput();
+            if ( sr_screen && SDL_IsScreenKeyboardShown( sr_screen ) )
+            {
+                SDL_StopTextInput();      // Enter from the IME: validate & close
+            }
             else
-                SDL_StopTextInput();
+            {
+                SDL_StopTextInput();      // reset state so a re-open really shows the IME
+                SDL_StartTextInput();
+            }
             return true;
         }
 #endif

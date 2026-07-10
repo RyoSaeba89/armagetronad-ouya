@@ -443,8 +443,9 @@ void eGrid::display_simple( eCamera* cam, int viewer,bool floor,
 #ifdef __ANDROID__
     // OUYA: lines are vertex-cheap while the FLOOR_TEXTURE path is fill-bound
     // (29 vs 60 fps at 720p on Tegra 3). A 4x extension makes the procedural
-    // grid cover most of the arena, approximating the classic full-grid look
-    // at line cost instead of texture-fill cost.
+    // grid cover the whole arena, approximating the classic full-grid look
+    // at line cost instead of texture-fill cost. The lines are clipped to the
+    // rim-wall bounding box below so the grid never extends past the arena.
 	#define EXTENSION 40
 #else
 	#define EXTENSION 10
@@ -457,6 +458,25 @@ void eGrid::display_simple( eCamera* cam, int viewer,bool floor,
                 int xn=static_cast<int>(x/SIDELEN);
                 int yn=static_cast<int>(y/SIDELEN);
 
+                // unclipped line span around the center
+                REAL loX = x-SIDELEN*(EXTENSION+1);
+                REAL hiX = x+SIDELEN*(EXTENSION+1);
+                REAL loY = y-SIDELEN*(EXTENSION+1);
+                REAL hiY = y+SIDELEN*(EXTENSION+1);
+
+#ifdef __ANDROID__
+                // Clip the grid to the arena: the enlarged extension would
+                // otherwise draw floor lines beyond the rim walls. The menu
+                // background grid has no rim walls and stays unclipped.
+                if ( se_rimWalls.Len() > 0 )
+                {
+                    tRectangle const & bounds = eWallRim::GetBounds();
+                    if ( loX < bounds.GetLow().x )  loX = bounds.GetLow().x;
+                    if ( hiX > bounds.GetHigh().x ) hiX = bounds.GetHigh().x;
+                    if ( loY < bounds.GetLow().y )  loY = bounds.GetLow().y;
+                    if ( hiY > bounds.GetHigh().y ) hiY = bounds.GetHigh().y;
+                }
+#endif
 
                 //glDisable(GL_TEXTURE);
                 glDisable(GL_TEXTURE_2D);
@@ -466,18 +486,22 @@ void eGrid::display_simple( eCamera* cam, int viewer,bool floor,
 
                 BeginLines();
                 for(int i=xn-EXTENSION;i<=xn+EXTENSION;i++){
-                    REAL intens=INTENSITY(i*SIDELEN,x);
+                    REAL lineX = i*SIDELEN;
+                    if ( lineX < loX || lineX > hiX ) continue;
+                    REAL intens=INTENSITY(lineX,x);
                     if (intens<0) intens=0;
                     se_glFloorColor(intens,intens);
-                    glVertex2f(i*SIDELEN,y-SIDELEN*(EXTENSION+1));
-                    glVertex2f(i*SIDELEN,y+SIDELEN*(EXTENSION+1));
+                    glVertex2f(lineX,loY);
+                    glVertex2f(lineX,hiY);
                 }
                 for(int j=yn-EXTENSION;j<=yn+EXTENSION;j++){
-                    REAL intens=INTENSITY(j*SIDELEN,y);
+                    REAL lineY = j*SIDELEN;
+                    if ( lineY < loY || lineY > hiY ) continue;
+                    REAL intens=INTENSITY(lineY,y);
                     if (intens<0) intens=0;
                     se_glFloorColor(intens,intens);
-                    glVertex2f(x-(EXTENSION+1)*SIDELEN,j*SIDELEN);
-                    glVertex2f(x+(EXTENSION+1)*SIDELEN,j*SIDELEN);
+                    glVertex2f(loX,lineY);
+                    glVertex2f(hiX,lineY);
                 }
                 RenderEnd();
             }

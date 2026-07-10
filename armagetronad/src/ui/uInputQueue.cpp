@@ -556,6 +556,14 @@ bool su_GetMenuInput( SDL_Event & tEvent, REAL & time )
             continue;                    // axis sample neutralised by hysteresis: skip
         if ( !su_IsPadEvent( tEvent ) )
             return true;                 // keyboard / mouse: deliver as-is
+        // While the on-screen keyboard is up, the controller talks to the IME —
+        // but the same physical presses ALSO arrive here as raw joystick events.
+        // Converting them would drive the menu behind the keyboard: a d-pad
+        // press changes the selected item, the string field gets Deselect()ed,
+        // and the keyboard closes instantly ("flashes"). Swallow every pad
+        // event while the keyboard is shown; the IME feeds us the typed text.
+        if ( sr_screen && SDL_IsScreenKeyboardShown( sr_screen ) )
+            continue;
         if ( su_PadToMenuKey( tEvent ) )
             return true;                 // pad mapped to a nav key: deliver it
         // pad event with no menu meaning: skip it and fetch the next one
