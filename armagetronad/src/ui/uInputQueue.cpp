@@ -359,9 +359,22 @@ static void su_LogPadEventRaw( SDL_Event const & e )
 // nothing at all - no in-game turn, no menu nav, and the phantom accelerometer
 // (instance 1) can't drift anything either. Neutralised events become type 0,
 // which su_HandleEvent and su_GetMenuInput both ignore.
-static bool su_DropStickAxis( SDL_Event & e )
+//
+// Only the LEFT STICK (axes 0/1) of the real controller (instance 0) passes:
+// the phantom accelerometer (instance 1) would drift, and the trigger axes
+// (2/5) plus right stick (3/4) have no assigned role and would chatter into
+// whatever they touch. In-game the surviving axis samples feed the native
+// analog steering (JOY_LEFT/RIGHT/UP/DOWN binds -> gJoystick, which has its
+// own ~70% deflection deadzone); in menus su_PadToMenuKey converts them to
+// arrow keys behind a Schmitt trigger.
+static bool su_FilterStickAxis( SDL_Event & e )
 {
-    if ( e.type == SDL_JOYAXISMOTION ) { e.type = 0; return false; }
+    if ( e.type == SDL_JOYAXISMOTION &&
+         ( e.jaxis.which != 0 || e.jaxis.axis > 1 ) )
+    {
+        e.type = 0;
+        return false;
+    }
     return true;
 }
 static void su_MakeKey( SDL_Event & e, SDL_Scancode sc, SDL_Keycode sym, bool down )
@@ -389,13 +402,22 @@ static bool su_NavDim( SDL_Event & e, int nd, int & state,
     else          su_MakeKey( e, scP, syP, true );
     return true;
 }
+// Schmitt trigger for stick->menu-nav: engage past ON, release only under OFF.
+// The gap keeps noise around a single threshold from double-stepping the menu,
+// and OFF stays far above the OUYA stick's ~10% (~3300) firmware rest offset.
+static int su_AxisDir( int v, int prev )
+{
+    const int ON = 16000, OFF = 8000;
+    if ( prev < 0 ) return v <= -OFF ? -1 : ( v >= ON ? 1 : 0 );
+    if ( prev > 0 ) return v >=  OFF ?  1 : ( v <= -ON ? -1 : 0 );
+    return v <= -ON ? -1 : ( v >= ON ? 1 : 0 );
+}
 // Map a single pad event to a menu navigation key, in place. Returns true if e
 // now holds a usable key event; false if this pad event has no menu meaning and
 // should be skipped. State is menu-local (only ever runs on the menu fetch path).
 static bool su_PadToMenuKey( SDL_Event & e )
 {
     static int mX = 0, mY = 0, mHX = 0, mHY = 0;
-    const int TH = 16000;
     switch ( e.type )
     {
     case SDL_JOYBUTTONDOWN:
@@ -422,11 +444,10 @@ static bool su_PadToMenuKey( SDL_Event & e )
     {
         if ( e.jaxis.which != 0 ) return false;     // ignore phantom accelerometer
         int v = e.jaxis.value;
-        int nd = v < -TH ? -1 : ( v > TH ? 1 : 0 );
         if ( e.jaxis.axis == 0 )
-            return su_NavDim( e, nd, mX, SDL_SCANCODE_LEFT, SDLK_LEFT, SDL_SCANCODE_RIGHT, SDLK_RIGHT );
+            return su_NavDim( e, su_AxisDir( v, mX ), mX, SDL_SCANCODE_LEFT, SDLK_LEFT, SDL_SCANCODE_RIGHT, SDLK_RIGHT );
         if ( e.jaxis.axis == 1 )
-            return su_NavDim( e, nd, mY, SDL_SCANCODE_UP, SDLK_UP, SDL_SCANCODE_DOWN, SDLK_DOWN );
+            return su_NavDim( e, su_AxisDir( v, mY ), mY, SDL_SCANCODE_UP, SDLK_UP, SDL_SCANCODE_DOWN, SDLK_DOWN );
         return false;
     }
     case SDL_JOYHATMOTION:
@@ -485,9 +506,9 @@ bool su_GetSDLInput(SDL_Event &tEvent,REAL &time){
 #ifdef __ANDROID__
             if ( ret && su_IsPadEvent( tEvent ) )
             {
-                su_DropStickAxis( tEvent );         // stick unbound: kill all axis samples
+                su_FilterStickAxis( tEvent );       // keep left-stick axes only
                 if ( tEvent.type != 0 )
-                    su_LogPadEventRaw( tEvent );    // log the remaining (buttons) only
+                    su_LogPadEventRaw( tEvent );    // log the remaining events only
             }
 #endif
         }
