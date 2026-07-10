@@ -31,7 +31,7 @@ public class LoaderActivity extends Activity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
-        TextView tv = new TextView(this);
+        final TextView tv = new TextView(this);
         tv.setText("Armagetron Advanced\n\nLoading…");
         tv.setTextColor(Color.WHITE);
         tv.setTextSize(24);
@@ -54,7 +54,20 @@ public class LoaderActivity extends Activity {
         new Thread(new Runnable() {
             @Override
             public void run() {
-                AssetExporter.exportIfNeeded(LoaderActivity.this, finalVersionCode);
+                AssetExporter.exportIfNeeded(LoaderActivity.this, finalVersionCode,
+                        new AssetExporter.ProgressListener() {
+                    @Override
+                    public void onProgress(final int copied, final int total) {
+                        runOnUiThread(new Runnable() {
+                            @Override
+                            public void run() {
+                                int pct = total > 0 ? (copied * 100) / total : 0;
+                                tv.setText("Armagetron Advanced\n\nInstalling game data… " + pct
+                                        + "%\n(first launch only)");
+                            }
+                        });
+                    }
+                });
                 runOnUiThread(new Runnable() {
                     @Override
                     public void run() {

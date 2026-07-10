@@ -440,7 +440,15 @@ void eGrid::display_simple( eCamera* cam, int viewer,bool floor,
         case rFLOOR_GRID:
             {
 	#define SIDELEN   (se_GridSize())
+#ifdef __ANDROID__
+    // OUYA: lines are vertex-cheap while the FLOOR_TEXTURE path is fill-bound
+    // (29 vs 60 fps at 720p on Tegra 3). A 4x extension makes the procedural
+    // grid cover most of the arena, approximating the classic full-grid look
+    // at line cost instead of texture-fill cost.
+	#define EXTENSION 40
+#else
 	#define EXTENSION 10
+#endif
 
                 eCoord center = cam->CameraPos() + cam->CameraDir() * (SIDELEN * EXTENSION * .8);
 

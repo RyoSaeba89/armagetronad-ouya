@@ -1744,7 +1744,11 @@ void sr_LoadDefaultConfig(){
     // state we land in after the user wipes Android/data/<pkg> -- so without this clamp
     // a data wipe silently resets every visual back to maximum detail and tanks the
     // framerate. Force the low-detail profile here so first launch == later launches.
-    sr_floorDetail   = rFLOOR_GRID;   // cheap procedural lines around the cycle only
+    // Measured at 720p on hardware: rFLOOR_TEXTURE (full-arena textured grid) is
+    // fill-bound at 29-33 fps vs 60 fps for rFLOOR_GRID. Instead of the texture,
+    // the procedural grid's EXTENSION is raised 4x on Android (eDisplay.cpp) so
+    // the cheap line grid covers most of the arena — classic look at 60 fps.
+    sr_floorDetail   = rFLOOR_GRID;
     sr_floorMirror   = rMIRROR_OFF;   // no reflected second pass
     sr_alphaBlend    = false;         // opaque walls: kills per-pixel blend + overdraw
     sr_highRim       = false;         // lower-detail rim walls

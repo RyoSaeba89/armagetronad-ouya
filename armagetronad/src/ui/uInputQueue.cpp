@@ -36,10 +36,11 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
 #ifdef __ANDROID__
 #include <android/log.h>
-// Real-time, unbuffered diagnostics straight to logcat (tag ARMA-INPUT). The
-// engine's std::cerr is block-buffered into arma.log, which loses/delays input
-// traces; logcat shows every event live. Capture with: adb logcat -s ARMA-INPUT
-#define PADLOG(...) __android_log_print( ANDROID_LOG_INFO, "ARMA-INPUT", __VA_ARGS__ )
+// Per-event pad diagnostics (tag ARMA-INPUT), disabled for release builds —
+// they log every axis/button event. To debug controller input, swap the no-op
+// for the __android_log_print line and capture with: adb logcat -s ARMA-INPUT
+// #define PADLOG(...) __android_log_print( ANDROID_LOG_INFO, "ARMA-INPUT", __VA_ARGS__ )
+#define PADLOG(...) ((void)0)
 #endif
 
 #include  "tRecorder.h"

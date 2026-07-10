@@ -1178,17 +1178,6 @@ static void su_TransformEvent( SDL_Event & e, std::vector< uTransformEventInfo >
             SDL_keysym &c = e.key.keysym;
 #endif
 
-#ifdef __ANDROID__
-            {
-                uInput * dbgIn = su_GetKeyInput().sdl_keys[ c.scancode ];
-                __android_log_print( ANDROID_LOG_INFO, "ARMA-INPUT",
-                    "KEY %s sc=%d sym=%d input=%d bind=%d",
-                    ( e.type == SDL_KEYDOWN ? "DOWN" : "UP" ),
-                    (int)c.scancode, (int)c.sym,
-                    ( dbgIn ? 1 : 0 ), ( dbgIn && dbgIn->GetBind() ? 1 : 0 ) );
-            }
-#endif
-
             info.push_back( uTransformEventInfo(
 #if SDL_VERSION_ATLEAST(2,0,0)
                                 su_GetKeyInput().sdl_keys[ c.scancode ],

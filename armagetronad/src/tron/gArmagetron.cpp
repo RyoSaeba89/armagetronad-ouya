@@ -712,9 +712,14 @@ int main(int argc,char **argv){
         }
         // soft-keyboard Enter validates text fields (SDL2 2.0.14 IME quirk)
         SDL_SetHint( SDL_HINT_RETURN_KEY_HIDES_IME, "1" );
-        // NOTE: the on-screen keyboard that used to steal focus from the gamepad is
-        // suppressed by guarding the SDL_StartTextInput() calls in rScreen.cpp /
-        // uMenu.cpp with #ifndef __ANDROID__ (SDL 2.0.14 lacks the ENABLE_SCREEN_KEYBOARD hint).
+        // No HIDAPI: it triggers an Android USB-permission prompt for plugged HID
+        // gamepads on every launch; pads work via the standard Android joystick
+        // driver. Java side no longer acquires HIDDeviceManager either.
+        SDL_SetHint( SDL_HINT_JOYSTICK_HIDAPI, "0" );
+        // NOTE: the blanket SDL_StartTextInput() in rScreen.cpp (SDL_EnableUNICODE)
+        // stays #ifndef __ANDROID__ so the on-screen keyboard never opens on plain
+        // menu screens; uMenuItemString::Select() DOES call it so string fields
+        // (player name etc.) get the keyboard on demand.
     }
 #endif
 

@@ -30,7 +30,16 @@ public class AssetExporter {
     // dir is really populated (not just that a marker was left behind).
     private static final String SENTINEL = "config/settings.cfg";
 
+    /** Reports first-launch install progress; called from the export thread. */
+    public interface ProgressListener {
+        void onProgress(int copied, int total);
+    }
+
     public static void exportIfNeeded(Context ctx, int versionCode) {
+        exportIfNeeded(ctx, versionCode, null);
+    }
+
+    public static void exportIfNeeded(Context ctx, int versionCode, ProgressListener listener) {
         File base = resolveBase(ctx);
         if (base == null) {
             // Should never happen now, but never proceed to a broken launch silently.
@@ -60,8 +69,19 @@ public class AssetExporter {
         Log.d(TAG, "exporting game assets to " + base.getAbsolutePath());
         AssetManager am = ctx.getAssets();
         try {
+            // Walk the asset tree once up front so we can report real progress;
+            // the copy loop below then works from this flat list without any
+            // further AssetManager.list() calls.
+            java.util.ArrayList<String> files = new java.util.ArrayList<String>();
             for (String dir : DATA_DIRS) {
-                copyAsset(am, dir, base);
+                collectFiles(am, dir, files);
+            }
+            int total = files.size();
+            for (int i = 0; i < total; i++) {
+                copyFile(am, files.get(i), base);
+                if (listener != null && (i % 10 == 0 || i == total - 1)) {
+                    listener.onProgress(i + 1, total);
+                }
             }
             if (!sentinel.exists()) {
                 throw new IOException("export finished but sentinel missing: " + sentinel);
@@ -111,28 +131,29 @@ public class AssetExporter {
         return ctx.getExternalFilesDir(null);
     }
 
-    private static void copyAsset(AssetManager am, String path, File outRoot) throws IOException {
+    private static void collectFiles(AssetManager am, String path, java.util.List<String> out)
+            throws IOException {
         String[] children = am.list(path);
         if (children != null && children.length > 0) {
-            // directory
-            File dir = new File(outRoot, path);
-            if (!dir.exists() && !dir.mkdirs()) {
-                throw new IOException("mkdirs failed: " + dir);
-            }
             for (String child : children) {
-                copyAsset(am, path + "/" + child, outRoot);
+                collectFiles(am, path + "/" + child, out);
             }
         } else {
-            // file
-            File outFile = new File(outRoot, path);
-            File parent = outFile.getParentFile();
-            if (parent != null && !parent.exists()) parent.mkdirs();
-            byte[] buf = new byte[65536];   // 64KB: minutes -> seconds on OUYA flash
-            try (InputStream in = am.open(path);
-                 OutputStream out = new BufferedOutputStream(new FileOutputStream(outFile), 65536)) {
-                int n;
-                while ((n = in.read(buf)) != -1) out.write(buf, 0, n);
-            }
+            out.add(path);
+        }
+    }
+
+    private static void copyFile(AssetManager am, String path, File outRoot) throws IOException {
+        File outFile = new File(outRoot, path);
+        File parent = outFile.getParentFile();
+        if (parent != null && !parent.exists() && !parent.mkdirs()) {
+            throw new IOException("mkdirs failed: " + parent);
+        }
+        byte[] buf = new byte[65536];   // 64KB: minutes -> seconds on OUYA flash
+        try (InputStream in = am.open(path);
+             OutputStream out = new BufferedOutputStream(new FileOutputStream(outFile), 65536)) {
+            int n;
+            while ((n = in.read(buf)) != -1) out.write(buf, 0, n);
         }
     }
 

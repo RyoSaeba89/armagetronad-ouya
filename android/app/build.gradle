@@ -10,8 +10,11 @@ android {
         applicationId 'com.ryo.armagetronadouya'
         minSdkVersion platformVersion
         targetSdkVersion 30
-        versionCode 8
-        versionName "0.4.5-ouya"   // versionCode 8: keep literal res paths so the store can extract ouya_icon.png; drop redundant assets/ouya_icon.png (only res/drawable-xhdpi/ is used)
+        versionCode 9
+        // Port releases are numbered rN, decoupled from the engine version: the
+        // engine base is the upstream 0.4 development trunk (ahead of the 0.2.9.x
+        // stable line) — see README "Which Armagetron version is this?".
+        versionName "0.4-trunk-ouya-r9"
 
         externalNativeBuild {
             cmake {

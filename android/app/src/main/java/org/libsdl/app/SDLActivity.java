@@ -271,7 +271,11 @@ public class SDLActivity extends Activity implements View.OnSystemUiVisibilityCh
 
         mClipboardHandler = new SDLClipboardHandler();
 
-        mHIDDeviceManager = HIDDeviceManager.acquire(this);
+        // HIDAPI disabled on purpose: it prompts the user for USB permission for any
+        // plugged HID gamepad (e.g. wired X360 pad) at every launch, and the OUYA/
+        // Android pads already work through the standard InputDevice joystick path
+        // (SDLControllerManager). Native side sets SDL_HINT_JOYSTICK_HIDAPI=0 too.
+        mHIDDeviceManager = null;
 
         // Set up the surface
         mSurface = new SDLSurface(getApplication());

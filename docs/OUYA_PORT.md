@@ -289,31 +289,72 @@ gamepad declared, `INTERNET` + `ACCESS_NETWORK_STATE` + `WRITE_EXTERNAL_STORAGE`
 ```sh
 adb connect <ouya-ip>:5555           # the OUYA's DHCP address (changes between sessions)
 
-# Always wipe before redeploy so fresh config/first-use defaults apply cleanly:
-adb shell pm clear org.armagetronad.ouya
-adb shell rm -r /sdcard/Android/data/org.armagetronad.ouya
+# For a truly fresh install (re-runs first-use defaults + asset export):
+adb shell pm clear com.ryo.armagetronadouya
+adb shell rm -r /sdcard/Android/data/com.ryo.armagetronadouya
 adb install -r app/build/outputs/apk/debug/app-debug.apk
-adb shell am start -n org.armagetronad.ouya/.LoaderActivity
+adb shell am start -n com.ryo.armagetronadouya/org.armagetronad.ouya.LoaderActivity
 ```
 
 Diagnostics go to **logcat** (the engine's `arma.log` is block‑buffered and drops events):
-`adb logcat -s SDL AssetExporter ARMA-INPUT`.
+`adb logcat -s SDL AssetExporter ARMA-INPUT ARMA-CFG`.
 
 ---
 
-## 10. Summary of port‑specific patches
+## 10. The r9 fix wave (community feedback)
+
+[cweiske](https://github.com/cweiske)'s bug reports (issues #1–#8) led to a deep fix pass:
+
+- **Canonical resource tree** (the root cause behind broken tutorials, a tutorial crash and
+  the "Map load failure" screen): the engine resolves maps/cockpits by *canonical resource
+  name* (`Z-Man/tutorial/navigation-0.1.0.aamap.xml`, derived from each file's XML `<Resource>`
+  header) under `resource/included/` — a tree that only `make install` generates on desktop.
+  The APK used to ship the raw `resource/proto/` tree, so **every** map/cockpit lookup failed
+  and the engine fell back to a degenerate arena. The assets now contain the proper
+  `resource/included/` tree, generated with the upstream tool:
+  `python batch/make/copyresources.py resource/proto <dest>` + `resource/binary/*` merged in.
+  Tutorial maps, the default arena `square-1.0.1.aamap.xml` and the standard cockpit
+  (clock, gauges, minimap) all resolve now.
+- **Ghost-package config loss**: `cpp/android_init.c` hardcoded the pre‑rename application id
+  in `HOME`/`XDG_*`, so the user config (`user_3_1_utf8.cfg` — settings, first‑setup state,
+  tutorial progress) was silently written into the data dir of a no‑longer‑installed package
+  and never read back. The package name is now derived from `/proc/self/cmdline`.
+- **On‑screen keyboard for text fields**: `SDL_StartTextInput()` is invoked when a string
+  field is *activated* (O / Enter on the field) — not on mere focus, which would flash the
+  keyboard while scrolling menus. The OUYA leanback keyboard is fully controller‑driven.
+- **In‑game menu on the system button**: `INGAME_MENU` is bound to the key the OUYA system
+  button sends on a single press (`KEYCODE_MENU` → `SDL_SCANCODE_MENU`), plus START
+  (`JOYSTICK_1_BUTTON_6`) for generic pads. O is select‑in‑menus only.
+- **No more USB permission prompt**: SDL's Java HIDAPI is disabled (`HIDDeviceManager` not
+  acquired + `SDL_HINT_JOYSTICK_HIDAPI=0`); pads use the standard Android joystick path.
+- **Full‑arena grid at 60 fps**: the procedural floor grid's hardcoded `EXTENSION` was raised
+  10 → 40 on Android (`engine/eDisplay.cpp`). Grid *lines* are vertex‑cheap; the textured
+  floor (`FLOOR_DETAIL 2`) was measured fill‑bound at 29–33 fps vs 60 fps for the line grid
+  at 720p on Tegra 3 — this gets the classic full‑grid look at the line price.
+- **First‑launch progress**: the asset export shows a live percentage instead of a bare
+  "Loading…" (`AssetExporter.ProgressListener`).
+
+Known limitation: the *Input Configuration* screens rebind **keyboard** keys only — inside
+menus the pad buttons are translated to navigation keys before the bind‑grab sees them, and
+the curated pad binds are (re)applied from `autoexec.cfg` on every launch anyway.
+
+---
+
+## 11. Summary of port‑specific patches
 
 | Area | File(s) | Change |
 |------|---------|--------|
 | GL/GLU | `cpp/glu_shim/glu_shim.c` | hand‑written GLU (7 funcs + tess stubs) |
 | Build config | `cpp/aa_config.h`, `cpp/CMakeLists.txt` | API‑16 config, source glob, `DONTUSEMEMMANAGER` |
-| Data dir | `tron/gArmagetron.cpp` | point dirs at external storage; log to `arma.log` |
-| Input (menus) | `ui/uInputQueue.{cpp,h}`, `ui/uMenu.cpp` | menu‑only pad→nav‑key converter |
+| Early env | `cpp/android_init.c` | gl4es env; HOME/XDG from `/proc/self/cmdline` package name |
+| Data dir | `tron/gArmagetron.cpp` | point dirs at external storage; log to `arma.log`; HIDAPI off |
+| Resources | `assets/resource/included/` | canonical resource tree (upstream `copyresources.py`) |
+| Input (menus) | `ui/uInputQueue.{cpp,h}`, `ui/uMenu.cpp` | menu‑only pad→nav‑key converter; keyboard on field activation |
 | Input (device) | `ui/uInput.cpp` | deterministic joystick `internalName`; drop stick axes |
-| Input (binds) | `assets/config/autoexec.cfg` | pad binds, camera on X, tooltips off, perf cuts, fullscreen |
-| Performance | `render/rScreen.cpp` | `__ANDROID__` low‑detail clamp in `sr_LoadDefaultConfig()` |
+| Input (binds) | `assets/config/autoexec.cfg` | pad binds, menu on system button, camera on X, tooltips off, fullscreen |
+| Performance | `render/rScreen.cpp`, `engine/eDisplay.cpp` | `__ANDROID__` low‑detail clamp; grid `EXTENSION` 40 |
 | Fullscreen | `java/.../SDLActivity.java` | `setFixedSize(1280,720)` + `MATCH_PARENT` surface |
-| Packaging | `java/.../LoaderActivity.java`, `AndroidManifest.xml`, `assets/ouya_icon.png` | ANR‑safe loader, OUYA tile |
+| Packaging | `java/.../LoaderActivity.java`, `AndroidManifest.xml`, `assets/ouya_icon.png` | ANR‑safe loader w/ progress, OUYA tile |
 | Robust assets | `java/.../AssetExporter.java` | retry/mkdirs/sentinel‑gated export (survives data wipe) |
 
 ---

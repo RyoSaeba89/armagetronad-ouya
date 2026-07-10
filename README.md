@@ -34,9 +34,12 @@ the OUYA's NVIDIA Tegra 3 (Android 4.1 / API 16), driven entirely by the OUYA ga
 |-------|--------|
 | **D‑pad Left / Right** | Steer the light‑cycle |
 | **D‑pad Down** | Brake |
-| **O** (bottom face button) | Open / close the in‑game menu |
+| **OUYA system button** (single press) | Open / close the in‑game menu |
 | **X / U** (left face button) | Switch camera mode |
-| **D‑pad + face buttons** | Navigate menus (Select / Back) |
+| **D‑pad + face buttons** | Navigate menus (O = Select / A = Back) |
+
+On a non‑OUYA controller (e.g. a wired Xbox 360 pad) the **Start** button opens the in‑game
+menu instead of the system button.
 
 The analog stick is intentionally **unbound** — steering is digital (d‑pad) only, which also
 prevents the OUYA's accelerometer from drifting the cycle. See the technical doc for why.
@@ -49,8 +52,19 @@ prevents the OUYA's accelerometer from drifting the cycle. See the technical doc
    adb connect <ouya-ip>:5555
    adb install -r ArmagetronAdvanced-OUYA.apk
    ```
-3. The game appears in **Make → … / Games**. First launch shows a short "Loading…" screen
-   while it unpacks game data (~1 minute on the OUYA's flash) — this is normal.
+3. The game appears in **Make → … / Games**. The **first launch only** shows an
+   "Installing game data…" screen with a progress percentage while the bundled game data is
+   unpacked to storage (~30–60 s on the OUYA's slow flash) — this is normal and happens once
+   per version.
+
+## Which Armagetron version is this?
+
+The engine base of this port is the upstream **0.4 development trunk** — the in‑progress next
+major version, which is *ahead of* the 0.2.9.x stable line (0.2.9.3.0 at the time of writing).
+The 0.4 trunk is what provides the tutorials, the cockpit HUD system and other features this
+port uses. Port releases are numbered **rN** (`0.4-trunk-ouya-rN`) independently of engine
+versions; earlier releases were tagged `0.4.x`, which unintentionally looked like an engine
+version number — they were port release numbers.
 
 ## Build from source
 

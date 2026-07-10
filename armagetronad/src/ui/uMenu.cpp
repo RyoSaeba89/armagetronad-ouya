@@ -898,6 +898,20 @@ bool uMenuItemString::Event(SDL_Event &e){
         SDL_keysym &c = e.key.keysym;
         SDLMod mod    = c.mod;
 #endif
+
+#if defined(__ANDROID__) && SDL_VERSION_ATLEAST(2,0,0)
+        // Console flow: RETURN (= the O button through the menu pad converter)
+        // toggles the on-screen keyboard for this field. See Select() above for
+        // why it must not open on mere focus.
+        if ( c.sym == SDLK_RETURN || c.sym == SDLK_KP_ENTER )
+        {
+            if ( !SDL_IsTextInputActive() )
+                SDL_StartTextInput();
+            else
+                SDL_StopTextInput();
+            return true;
+        }
+#endif
         bool moveWordLeft, moveWordRight, deleteWordLeft, deleteWordRight, moveBeginning, moveEnd, killForwards;
         moveWordLeft = moveWordRight = deleteWordLeft = deleteWordRight = moveBeginning = moveEnd = killForwards = false;
 
@@ -1099,8 +1113,12 @@ void uMenuItemString::Select() {
 #ifndef DEDICATED
 #if SDL_VERSION_ATLEAST(2,0,0)
 #ifndef __ANDROID__
-    // On Android this would pop the on-screen keyboard and steal gamepad focus.
     SDL_StartTextInput();
+#else
+    // On Android SDL_StartTextInput() pops the on-screen keyboard. Opening it on
+    // focus would flash it on every string field the user merely scrolls past
+    // (and it steals the d-pad while open), so on Android the keyboard opens on
+    // ACTIVATION instead: RETURN / the O button, handled in Event() below.
 #endif
 #endif
 #endif

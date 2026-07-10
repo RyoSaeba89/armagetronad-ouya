@@ -1023,6 +1023,10 @@ void st_LoadConfig( bool printChange )
     tConfItemBase::printChange=true;
 }
 
+#ifdef __ANDROID__
+#include <android/log.h>
+#endif
+
 void st_SaveConfig()
 {
     // don't save while playing back
@@ -1041,6 +1045,12 @@ void st_SaveConfig()
         tOutput o("$config_file_write_error");
         con << o;
         std::cerr << o;
+#ifdef __ANDROID__
+        __android_log_print( ANDROID_LOG_ERROR, "ARMA-CFG",
+                             "st_SaveConfig: could not open %s for writing (path=%s)",
+                             st_userConfigs[0],
+                             static_cast< const char * >( tDirectories::Config().GetWritePath( st_userConfigs[0] ) ) );
+#endif
     }
 }
 
